@@ -76,11 +76,10 @@ Collect.py also computes the information necessary to train the attack models de
 
 Metrics.py computes the statistics that indicate the performance of the different attack strategies, e.g. AUROC score, false positive ratio when the true positive ratio 95%, and best accuracy (maximized w.r.t. the threshold). This code has different modes depending on what part of the analysis you wish to compute:
 
-1. Mode 1 computes our analysis, using a balanced evaluation set (the number of training samples is equal to the number of non-training samples). It computes the following statistics, which are independent of the choice of threshold: AUROC score, best accuracy and, false positive rate at different true positive rates. It also computes the ROC curves for each strategy. Some strategies involve training an attack model, this is done using a balanced attacker training set. Then the same analysis is performed with the scores produced by the trained model on the evaluation set.
-2. Modes 2 and 3 compute the analysis described in ''[On the Difficulty of Membership Inference Attacks](https://openaccess.thecvf.com/content/CVPR2021/html/Rezaei_On_the_Difficulty_of_Membership_Inference_Attacks_CVPR_2021_paper.html)''. An unbalanced evaluation set is used. 80% of the total dataset is given to the attacker as side information. This side information is used either to train an attack model or to find the best threshold. The accuracy and false positive rate are computed with this threshold.
-3. See above.
-4. The analysis described for mode 1 is computed on an unbalanced evaluation set, where  5:1 is the ratio of training to testing samples.
-5. The analysis described for mode 1 is computed on an unbalanced evaluation set, where  1:5 is the ratio of training to testing samples.
+1. Compute our analysis using a balanced evaluation set (the number of training samples is equal to the number of non-training samples). It computes the following statistics, which are independent of the choice of threshold: AUROC score, best accuracy and, false positive rate at different true positive rates. It also computes the ROC curves for each strategy. Some strategies involve training an attack model, this is done using a balanced attacker training set. Then the same analysis is performed with the scores produced by the trained model on the evaluation set.
+2. Compute the analysis described in ''[On the Difficulty of Membership Inference Attacks](https://openaccess.thecvf.com/content/CVPR2021/html/Rezaei_On_the_Difficulty_of_Membership_Inference_Attacks_CVPR_2021_paper.html)''. An unbalanced evaluation set is used. 80% of the total dataset is given to the attacker as side information. This side information is used either to train an attack model or to find the best threshold. The accuracy and false positive rate are computed with this threshold.
+3. The analysis described for mode 1 is computed on an unbalanced evaluation set, where  5:1 is the ratio of training to testing samples.
+4. The analysis described for mode 1 is computed on an unbalanced evaluation set, where  1:5 is the ratio of training to testing samples.
 
 ## MetricsShokri.py
 

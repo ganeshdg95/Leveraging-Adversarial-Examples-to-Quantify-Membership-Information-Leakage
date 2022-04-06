@@ -36,42 +36,6 @@ def to_one_hot(y, num_classes):
     return y_one_hot
 
 
-def randSplitDF(scores, seed, test_size, train_set=False, train_size=None):
-    """Split input dataframe into random subsets for testing and training"""
-    np.random.seed(seed)
-    sets = []
-
-    scores = scores.sample(frac=1).reset_index(drop=True)
-
-    evaluation_set = scores.iloc[:test_size, :]
-    sets.append(evaluation_set)
-
-    if train_set and (train_size is not None):
-        training_set = scores.iloc[test_size:test_size + train_size, :]
-        sets.append(training_set)
-
-    return sets
-
-
-def randSplit(scores, seed, test_size, train_set=False, train_size=None):
-    """Split input dataframe into random subsets for testing and training"""
-    np.random.seed(seed)
-    sets = []
-
-    indexes = np.arange(scores.shape[0])
-    np.random.shuffle(indexes)
-    scores = scores[indexes, :]
-
-    evaluation_set = scores[:test_size, :]
-    sets.append(evaluation_set)
-
-    if train_set and (train_size is not None):
-        training_set = scores[test_size:test_size + train_size, :]
-        sets.append(training_set)
-
-    return sets
-
-
 def computeMetrics(scores0, scores1, FPR):
     labels0 = np.zeros_like(scores0)
     labels1 = np.ones_like(scores1)
@@ -79,29 +43,6 @@ def computeMetrics(scores0, scores1, FPR):
     scores = np.concatenate((scores0, scores1))
     labels = np.concatenate((labels0, labels1))
 
-    # ROC curve
-    fpr, tpr, thr = roc_curve(labels, scores)
-    TPR = np.interp(FPR, fpr, tpr)
-
-    # FPR @TPR95
-
-    metrics = np.interp([.80, .85, .90, .95], tpr, fpr)
-
-    # AUROC
-
-    AUROC = roc_auc(labels, scores)
-
-    # Optimal Accuracy
-
-    AccList = [accuracy_score(scores > t, labels) for t in thr]
-    Acc_opt = np.max(AccList)
-
-    metrics = np.append((AUROC, Acc_opt), metrics)
-
-    return TPR, metrics
-
-
-def computeMetricsAlt(scores, labels, FPR):
     # ROC curve
     fpr, tpr, thr = roc_curve(labels, scores)
     TPR = np.interp(FPR, fpr, tpr)
@@ -149,19 +90,6 @@ def evalBestThreshold(thr_opt, scores0, scores1):
     FPR = sum(scores0 > thr_opt) / len(scores0)
 
     return [Acc, FPR[0]]
-
-
-def evalThresholdAlt(threshold, scores, labels):
-    scores0 = scores[(labels == 0)]
-    scores1 = scores[(labels == 1)]
-    labels0 = labels[(labels == 0)]
-    labels1 = labels[(labels == 1)]
-
-    Acc = (accuracy_score(scores0 > threshold, labels0) + accuracy_score(scores1 > threshold, labels1)) / 2
-
-    FPR = sum(scores0 > threshold) / len(scores0)
-
-    return [Acc, FPR]
 
 
 def Softmax(in_tensor):

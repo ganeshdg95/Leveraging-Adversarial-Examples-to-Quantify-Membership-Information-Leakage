@@ -10,23 +10,45 @@ Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
 
 
 def rescale(tensor, max_, min_):
+    """ Rescale a pytorch tensor to [0,1].
+    tensor: pytorch tensor with dimensions [batch,channels,width,height]
+    max_: pytorch tensor containing the maximum values per channel
+    min_: pytorch tensor containing the minimum values per channel
+    outputs -> rescaled pytorch tensor with the same dimensions as 'tensor'
+    """
     max_ = max_.reshape(1, -1, 1, 1)
     min_ = min_.reshape(1, -1, 1, 1)
     return (tensor - min_) / (max_ - min_ + 1e-8)
 
 
 def unscale(tensor, max_, min_):
+    """ Rescale a pytorch tensor back to its original values.
+    tensor: pytorch tensor with dimensions [batch,channels,width,height]
+    max_: pytorch tensor containing the maximum values per channel
+    min_: pytorch tensor containing the minimum values per channel
+    outputs -> rescaled pytorch tensor with the same dimensions as 'tensor'
+    """
     max_ = max_.reshape(1, -1, 1, 1)
     min_ = min_.reshape(1, -1, 1, 1)
     return tensor * (max_ - min_) + min_
 
 
 def predict(model, sample):
+    """ returns the index of the predicted class.
+    model: instance of a nn.Module subclass
+    sample: pytorch tensor. Batch of samples. Must have the appropriate dimensions for an input of 'model'
+    outputs -> tensor containing the index of the predicted classes for 'sample'
+    """
     _, pred = torch.max(model(sample), 1)
     return pred
 
 
 def to_one_hot(y, num_classes):
+    """ Convert a list of indexes into a list of one-hot encoded vectors.
+    y: pytorch tensor of shape [batch], containing a list of integer labels
+    num_classes: int corresponding to the number of classes
+    outputs -> pytorch tensor containing the one-hot encoding of the labels 'y'. Its dimensions are [batch,num_classes]
+    """
     if len(y.shape) == 1:
         y = torch.unsqueeze(y, 1)
     y_one_hot = torch.zeros(y.shape[0], num_classes)
@@ -37,6 +59,15 @@ def to_one_hot(y, num_classes):
 
 
 def computeMetrics(scores0, scores1, FPR):
+    """ Computes performance metrics using the scores computed with a certain strategy. The performance scores computed
+    include the AUROC score, the best accuracy achieved for any threshold and the FPR at TPR 95%. Also computes the TPR
+    values corresponding to the FPR values given as input.
+    scores0: numpy array containing the negative scores
+    scores1: numpy array containing the positive scores
+    FPR: numpy array. TPR values will be interpolated for this FPR values
+    outputs -> tuple of ('TPR', 'metrics'). 'TPR' is a numpy array. 'metrics' is a list containing the AUROC score, best
+    accuracy, FPR at TPR 80, 85, 90 and 95%
+    """
     labels0 = np.zeros_like(scores0)
     labels1 = np.ones_like(scores1)
 
@@ -66,6 +97,11 @@ def computeMetrics(scores0, scores1, FPR):
 
 
 def computeBestThreshold(scores0, scores1):
+    """ Computes the threshold which maximizes the accuracy given the scores.
+        scores0: numpy array containing the negative scores
+        scores1: numpy array containing the positive scores
+        outputs -> thresh achieving the best accuracy for the input scores. Float
+        """
     labels0 = np.zeros_like(scores0)
     labels1 = np.ones_like(scores1)
 
@@ -82,6 +118,13 @@ def computeBestThreshold(scores0, scores1):
 
 
 def evalBestThreshold(thr_opt, scores0, scores1):
+    """ Computes the balanced accuracy and FPR of the given scores with the given threshold.
+    thr_opt: float threshold
+    scores0: numpy array containing the negative scores
+    scores1: numpy array containing the positive scores
+    outputs -> tuple containing the balanced accuracy and FPR
+
+    """
     labels0 = np.zeros_like(scores0)
     labels1 = np.ones_like(scores1)
 
@@ -94,7 +137,8 @@ def evalBestThreshold(thr_opt, scores0, scores1):
 
 def Softmax(in_tensor):
     """ Apply Softmax to the input tensor. 
-    in_tensor: pytorch tensor.
+    in_tensor: pytorch tensor with dimensions [batch, length]
+    outputs -> pytorch tensor with the same dimensions as 'in_tensor' containing the softmax of 'in_tensor'
     """
     in_tensor = torch.exp(in_tensor)
     sum_ = torch.unsqueeze(torch.sum(in_tensor, 1), 1)
@@ -102,15 +146,28 @@ def Softmax(in_tensor):
 
 
 def softmaxAttack(model, data):
-    """ Produces the scores for the Softmax attack.
-    model: target model. Must be an instance of a pytorch model.
-    data: samples to be tested. Pytorch tensor with shape: [batch,channels,...].
+    """ Produces the scores for the Softmax attack, which is the maximum value of the softmax vector for each sample
+    model: instance of a nn.Module subclass
+    data: samples to be tested. Pytorch tensor with shape appropriate shape for 'model'
+    outputs -> pytorch tensor of dimensions [batch] containing the softmax score of the input
     """
     scores, _ = torch.max(Softmax(model(data).detach()), 1)
     return scores
 
 
 def advDistance(model, images, labels, batch_size=10, epsilon=1, norm='Linf'):
+    """ Computes the adversarial distance score. First, adversarial examples are computed for each sample that is
+    correctly classified by the target model. Then, the distance between the original and adversarial samples is
+    computed. If a sample is misclassified, resulting adversarial distance will be 0.
+    model: instance of a nn.Module subclass
+    images: pytorch tensor with dimensions [batch,channels,width,height]
+    labels: pytorch tensor of shape [batch] containing the integer labels of the 'images'
+    batch_size: integer indicating the batch size for computing adversarial examples
+    epsilon: maximum value for the magnitude of perturbations
+    norm: indicates the norm used for computing adversarial examples and for measuring the distance between samples.
+    Must be in {'Linf','L2','L1'}
+    outputs -> pytorch tensor of dimensions [batch] containing the adversarial distance of 'images'
+    """
     if norm == 'Linf':
         ordr = float('inf')
     elif norm == 'L1':
@@ -132,9 +189,16 @@ def advDistance(model, images, labels, batch_size=10, epsilon=1, norm='Linf'):
 
 
 def gradNorm(model, images, labels, Loss):
+    """ Computes the l2 norm of the gradient of the loss w.r.t. the model parameters
+    model: instance of a nn.Module subclass
+    images: pytorch tensor with dimensions [batch,channels,width,height]
+    labels: pytorch tensor of shape [batch] containing the integer labels of the samples
+    loss: callable, loss function
+    outputs -> pytorch tensor of dimensions [batch] containing the l2 norm of the gradients
+    """
     loss = Loss(model(images), labels)
     gNorm = []
-    for j in range(loss.shape[0]):
+    for j in range(loss.shape[0]): # Loop over the batch
         grad_ = grad(loss[j], model.parameters(), create_graph=True)
         gNorm_ = -torch.sqrt(sum([grd.norm() ** 2 for grd in grad_]))
         gNorm.append(gNorm_.detach())
@@ -142,11 +206,24 @@ def gradNorm(model, images, labels, Loss):
 
 
 def lossAttack(model, images, labels, Loss):
+    """ Computes the loss value for a batch of samples.
+    model: instance of a nn.Module subclass
+    images: pytorch tensor with dimensions [batch,channels,width,height]
+    labels: pytorch tensor of shape [batch] containing the integer labels of the samples
+    loss: callable, loss function
+    outputs -> pytorch tensor of dimensions [batch] containing the negative loss values
+    """
     loss = Loss(model(images).detach(), labels)
     return -loss
 
 
 def Dist(sample, adv, ordr=float('inf')):
+    """Computes the norm of the difference between two vectors. The operation is done for batches of vectors
+    sample: pytorch tensor with dimensions [batch, others]
+    adv: pytorch tensor with the same dimensions as 'sample'
+    ordr: order of the norm. Must be in {1,2,float('inf')}
+    outputs -> pytorch tensor of dimensions [batch] containing distance values for the batch of samples.
+    """
     sus = sample - adv
     sus = sus.view(sus.shape[0], -1)
     return torch.norm(sus, ordr, 1)
@@ -162,11 +239,21 @@ def rescale01(data, Max, Min):
 
 
 def Entropy(softprob):
+    """ Compute the Shannon Entropy of a vector of soft probabilities.
+    softprob: pytorch tensor. Vector of soft probabilities with shape [batch,num_classes]
+    outputs -> pytorch tensor containing the entropy of each sample in the batch
+    """
     epsilon = 1e-8
     return - torch.sum(softprob * torch.log(softprob + epsilon), 1)
 
 
 def ModEntropy(softprob, labels):
+    """Compute the modified entropy, described https://www.usenix.org/system/files/sec21fall-song.pdf, of a vector of
+    soft probabilities.
+    softprob: pytorch tensor. Vector of soft probabilities with shape [batch,num_classes]
+    labels: pytorch tensor of shape [batch] containing the integer labels of the samples
+    outputs -> pytorch tensor containing the modified entropy of each sample in the batch
+    """
     epsilon = 1e-8
     confidence = torch.stack([softprob[i, labels[i]] for i in range(softprob.shape[0])])
     firstTerm = (confidence - 1) * torch.log(confidence + epsilon)

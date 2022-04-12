@@ -118,7 +118,12 @@ def advDistance(model, images, labels, batch_size=10, epsilon=1, norm='Linf'):
     elif norm == 'L2':
         ordr = 2
 
-    adversary = AutoAttack(model, norm=norm, eps=epsilon, version='standard')
+    if cuda:
+        dev = 'cuda'
+    else:
+        dev = 'cpu'
+
+    adversary = AutoAttack(model, norm=norm, eps=epsilon, version='standard', device=dev)
     adv = adversary.run_standard_evaluation(images, labels, bs=batch_size)
 
     dist = Dist(images, adv, ordr=ordr)

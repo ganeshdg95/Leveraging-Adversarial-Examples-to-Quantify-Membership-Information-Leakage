@@ -95,6 +95,44 @@ def computeMetrics(scores0, scores1, FPR):
 
     return TPR, metrics
 
+def computeMetricsAlt(scores, labels, FPR):
+    """
+    Computes several performance metrics based on scores.
+
+    scores: Numpy array. scores for both classes with corresponding labels given in 'labels'.
+    labels: Numpy array. labels for 'scores'.
+    FPR: array indicating FPR values for the ROC curve.
+    """
+
+    # AUROC
+
+    AUROC = roc_auc(labels, scores)
+    recompute_AUROC = False
+
+    if AUROC < .5:
+        scores = -scores
+        recompute_AUROC = True
+
+    if recompute_AUROC:
+        AUROC = roc_auc(labels, scores)
+
+    # ROC curve
+    fpr, tpr, thr = roc_curve(labels, scores, drop_intermediate=True)
+    interpolator = interp1d(fpr, tpr, kind='previous')
+    TPR = interpolator(FPR)
+
+    # FPR @TPR95
+
+    metrics = interpolator([.80, .85, .90, .95])
+
+    # Optimal Accuracy
+
+    AccList = (tpr + 1.0 - fpr) / 2
+    Acc_opt = AccList.max()
+
+    metrics = np.append((AUROC, Acc_opt), metrics)
+
+    return TPR, metrics
 
 def computeBestThreshold(scores0, scores1):
     """ Computes the threshold which maximizes the accuracy given the scores.
@@ -134,6 +172,21 @@ def evalBestThreshold(thr_opt, scores0, scores1):
 
     return [Acc, FPR[0]]
 
+def evalThresholdAlt(thr_opt, scores, labels):
+    indx0 = np.nonzero(labels==0)
+    indx1 = np.nonzero(labels==1)
+    
+    scores0 = scores[indx0]
+    scores1 = scores[indx1]
+    
+    labels0 = np.zeros_like(scores0)
+    labels1 = np.ones_like(scores1)
+
+    Acc = (accuracy_score(scores0 > thr_opt, labels0) + accuracy_score(scores1 > thr_opt, labels1)) / 2
+
+    FPR = sum(scores0 > thr_opt) / len(scores0)
+
+    return np.asarray([Acc, FPR],dtype=np.float64)
 
 def Softmax(in_tensor):
     """ Apply Softmax to the input tensor. 
